@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import enum
 
 
@@ -14,8 +14,8 @@ class Website(enum.Enum):
 
 @dataclass
 class Advert:
-    transaction_type: TransactionType
-    website: Website
+    transaction_type: TransactionType = field(repr=False)
+    website: Website = field(repr=False)
     price: int
     bedrooms: int
     link: str
