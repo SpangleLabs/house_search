@@ -17,6 +17,6 @@ class Advert:
     transaction_type: TransactionType
     website: Website
     price: int
-    rooms: int
+    bedrooms: int
     link: str
     description: str
