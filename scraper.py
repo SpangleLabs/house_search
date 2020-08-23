@@ -40,18 +40,29 @@ class ZooplaScraper(Scraper):
 
     def get_cambridge_rentals(self) -> List[Advert]:
         zoopla = Zoopla(self.api_key)
-        search = zoopla.property_listings({
-            "listing_status": "rent",
-            "area": "Cambridge, Cambridgeshire"
-        })
+        page_size = 100
+        page_num = 1
         adverts = []
-        for result in search.listing:
-            adverts.append(Advert(
-                TransactionType.RENT if result.listing_status == "rent" else TransactionType.BUY,
-                Website.ZOOPLA,
-                result.price * 52 / 12,  # API prices are per week
-                result.num_bedrooms,
-                result.details_url,
-                result.description
-            ))
+        while True:
+            search = zoopla.property_listings({
+                "listing_status": "rent",
+                "area": "Cambridge, Cambridgeshire",
+                "order_by": "price",
+                "ordering": "ascending",
+                "page_size": page_size,
+                "page_number": page_num
+            })
+            for result in search.listing:
+                adverts.append(Advert(
+                    TransactionType.RENT if result.listing_status == "rent" else TransactionType.BUY,
+                    Website.ZOOPLA,
+                    result.price * 52 / 12,  # API prices are per week
+                    result.num_bedrooms,
+                    result.details_url,
+                    result.description
+                ))
+            if len(search.listing) == page_size:
+                page_num += 1
+            else:
+                break
         return adverts
