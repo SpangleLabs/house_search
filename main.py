@@ -16,5 +16,7 @@ if __name__ == '__main__':
     rentals = []
     for scraper in scrapers:
         rentals += scraper.get_cambridge_rentals()
+    rentals = filter(lambda x: x.bedrooms >= 2, rentals)
     rentals = sorted(rentals, key=lambda x: x.price)
-    print(rentals)
+    for rental in rentals:
+        print(rental)
