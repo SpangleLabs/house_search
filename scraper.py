@@ -49,7 +49,7 @@ class ZooplaScraper(Scraper):
             adverts.append(Advert(
                 TransactionType.RENT if result.listing_status == "rent" else TransactionType.BUY,
                 Website.ZOOPLA,
-                result.price,
+                result.price * 52 / 12,  # API prices are per week
                 result.num_bedrooms,
                 result.details_url,
                 result.description
