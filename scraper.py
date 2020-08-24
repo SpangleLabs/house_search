@@ -43,16 +43,31 @@ class ZooplaScraper(Scraper):
         page_size = 100
         page_num = 1
         adverts = []
+        description_blocklist = [
+            "communal bathroom", "communal kitchen", "communal areas",
+            "communal living room", "house share", "shared house",
+            "communal entrance hall", "single room", "this room",
+            "communal space", "communal study", "room available",
+            "communal cleaner", "rooms available", "per person",
+            "sharing", "shared", "sharer", "student accommodation"
+        ]
+        search = zoopla.property_listings({
+            "listing_status": "rent",
+            "area": "Cambridge, Cambridgeshire",
+            "minimum_beds": 2,
+            "order_by": "price",
+            "ordering": "ascending",
+            "page_size": page_size,
+            "page_number": page_num
+        })
         while True:
-            search = zoopla.property_listings({
-                "listing_status": "rent",
-                "area": "Cambridge, Cambridgeshire",
-                "order_by": "price",
-                "ordering": "ascending",
-                "page_size": page_size,
-                "page_number": page_num
-            })
             for result in search.listing:
+                if result.property_type in ['Parking/garage']:
+                    continue
+                if any(block in result.description.lower() for block in description_blocklist):
+                    continue
+                if result.num_bathrooms < 1:
+                    continue
                 adverts.append(Advert(
                     TransactionType.RENT if result.listing_status == "rent" else TransactionType.BUY,
                     Website.ZOOPLA,
