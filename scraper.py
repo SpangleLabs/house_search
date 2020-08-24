@@ -51,16 +51,16 @@ class ZooplaScraper(Scraper):
             "communal cleaner", "rooms available", "per person",
             "sharing", "shared", "sharer", "student accommodation"
         ]
-        search = zoopla.property_listings({
-            "listing_status": "rent",
-            "area": "Cambridge, Cambridgeshire",
-            "minimum_beds": 2,
-            "order_by": "price",
-            "ordering": "ascending",
-            "page_size": page_size,
-            "page_number": page_num
-        })
         while True:
+            search = zoopla.property_listings({
+                "listing_status": "rent",
+                "area": "Cambridge, Cambridgeshire",
+                "minimum_beds": 2,
+                "order_by": "price",
+                "ordering": "ascending",
+                "page_size": page_size,
+                "page_number": page_num
+            })
             for result in search.listing:
                 if result.property_type in ['Parking/garage']:
                     continue
