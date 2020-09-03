@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 import enum
+from typing import Optional
 
 
 class TransactionType(enum.Enum):
@@ -17,6 +18,11 @@ class Advert:
     transaction_type: TransactionType = field(repr=False)
     website: Website = field(repr=False)
     price: int
-    bedrooms: int
+    bedrooms: Optional[int]
     link: str
+    description: Optional[str]
+
+
+class FullAdvert(Advert):
+    bedrooms: int
     description: str
