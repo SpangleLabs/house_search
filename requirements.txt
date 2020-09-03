@@ -1,2 +1,4 @@
 rightmove-webscraper
 git+https://github.com/AnthonyBloomer/zoopla.git
+requests
+beautifulsoup4

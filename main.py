@@ -1,6 +1,6 @@
 import json
 
-from scraper import RightMoveScraper, ZooplaScraper
+from scraper import RightMoveScraper, ZooplaScraper, ZooplaAPIScraper
 
 with open("config.json") as f:
     config = json.load(f)
@@ -8,7 +8,8 @@ with open("config.json") as f:
 
 scrapers = [
     RightMoveScraper(),
-    ZooplaScraper(config["zoopla_key"])
+    # ZooplaAPIScraper(config["zoopla_key"]),
+    ZooplaScraper()
 ]
 
 if __name__ == '__main__':

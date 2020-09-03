@@ -1,8 +1,11 @@
+import re
 import urllib.parse
 from abc import ABC, abstractmethod
 from enum import Enum, auto
 from typing import List, Optional
 
+import requests
+from bs4 import BeautifulSoup
 from rightmove_webscraper import RightmoveData
 from zoopla import Zoopla
 
@@ -30,9 +33,8 @@ class Filter(Enum):
 
 class Scraper(ABC):
 
-    @abstractmethod
     def get_cambridge_rentals(self) -> List[Advert]:
-        pass
+        return self.get_properties(Location.CAMBRIDGE, TransactionType.RENT, filters=[Filter.NO_SHARE])
 
     @abstractmethod
     def get_properties(
@@ -47,9 +49,6 @@ class Scraper(ABC):
 
 
 class RightMoveScraper(Scraper):
-
-    def get_cambridge_rentals(self) -> List[Advert]:
-        return self.get_properties(Location.CAMBRIDGE, TransactionType.RENT, filters=[Filter.NO_SHARE])
 
     def get_properties(
             self,
@@ -84,13 +83,10 @@ class RightMoveScraper(Scraper):
         return adverts
 
 
-class ZooplaScraper(Scraper):
+class ZooplaAPIScraper(Scraper):
 
     def __init__(self, api_key: str):
         self.api_key = api_key
-
-    def get_cambridge_rentals(self) -> List[Advert]:
-        return self.get_properties(Location.CAMBRIDGE, TransactionType.RENT, filters=[Filter.NO_SHARE])
 
     def get_properties(
             self,
@@ -145,3 +141,59 @@ class ZooplaScraper(Scraper):
             else:
                 break
         return adverts
+
+
+class ZooplaScraper(Scraper):
+
+    def get_properties(
+            self,
+            location: Location,
+            ttype: TransactionType,
+            *,
+            furnished: bool = False,
+            filters: Optional[List[Filter]] = None
+    ) -> List[Advert]:
+        results = []
+        page = 1
+        while True:
+            new_results = self.parse_page(location, ttype, page)
+            if new_results:
+                page += 1
+                results += new_results
+                continue
+            break
+        return results
+
+    def parse_page(self, location: Location, ttype: TransactionType, page: int = 1):
+        params = {
+            "price_frequency": "per_month",
+            "q": location.zoopla,
+            "results_sort": "newest_listings",
+            "search_source": "home",
+            "page_size": 100,
+            "pn": page
+        }
+        path = "/".join([x.strip().lower() for x in location.zoopla.split(",")][::-1])
+        url = f"https://www.zoopla.co.uk/to-rent/property/{path}/?" + urllib.parse.urlencode(params)
+        resp = requests.get(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36"}
+        )
+        soup = BeautifulSoup(resp.content, "html.parser")
+        results = []
+        for results_listing in soup.select("ul.listing-results"):
+            for result in results_listing.select(".listing-results-wrapper"):
+                result_info = result.select_one(".listing-results-right")
+                price_tag = result_info.select_one(".text-price")
+                num_beds = result_info.select_one(".num-beds")
+                desc_preview = result_info.select("p")  # ?
+                price = int(re.compile(r"£([0-9,]+) pcm").search(price_tag.text.strip()).group(1).replace(",", ""))
+                results.append(Advert(
+                    ttype,
+                    Website.ZOOPLA,
+                    price,
+                    int(num_beds.text) if num_beds is not None else None,
+                    "https://zoopla.co.uk/" + price_tag['href'].split("?")[0],
+                    max([x.text.strip() for x in desc_preview])
+                ))
+        return results
