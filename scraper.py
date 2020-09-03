@@ -1,10 +1,31 @@
+import urllib.parse
 from abc import ABC, abstractmethod
-from typing import List
+from enum import Enum, auto
+from typing import List, Optional
 
 from rightmove_webscraper import RightmoveData
 from zoopla import Zoopla
 
 from advert import Advert, TransactionType, Website
+
+
+class Location(Enum):
+
+    def __new__(cls, *args, **kwargs):
+        value = len(cls.__members__) + 1
+        obj = object.__new__(cls)
+        obj._value_ = value
+        return obj
+
+    def __init__(self, zoopla: str, rightmove: str):
+        self.zoopla = zoopla
+        self.rightmove = rightmove
+
+    CAMBRIDGE = "Cambridge, Cambridgeshire", "REGION^274"
+
+
+class Filter(Enum):
+    NO_SHARE = auto()
 
 
 class Scraper(ABC):
@@ -13,14 +34,44 @@ class Scraper(ABC):
     def get_cambridge_rentals(self) -> List[Advert]:
         pass
 
+    @abstractmethod
+    def get_properties(
+            self,
+            location: Location,
+            ttype: TransactionType,
+            *,
+            furnished: bool = False,
+            filters: List[Filter] = None
+    ) -> List[Advert]:
+        pass
+
 
 class RightMoveScraper(Scraper):
 
     def get_cambridge_rentals(self) -> List[Advert]:
-        url = f"https://www.rightmove.co.uk/property-to-rent/find.html?locationIdentifier=REGION%5E274&propertyTypes=bungalow%2Cdetached%2Cflat%2Csemi-detached%2Cterraced&includeLetAgreed=false&mustHave=&dontShow=houseShare%2Cretirement%2Cstudent&furnishTypes=unfurnished&keywords="
+        return self.get_properties(Location.CAMBRIDGE, TransactionType.RENT, filters=[Filter.NO_SHARE])
+
+    def get_properties(
+            self,
+            location: Location,
+            ttype: TransactionType,
+            *,
+            furnished: bool = False,
+            filters: Optional[List[Filter]] = None
+    ) -> List[Advert]:
+        filters = filters or []
+        params = {
+            "locationIdentifier": location.rightmove,
+            "propertyType": "bungalow,detached,flat,semi-detached,terraced",
+            "includeLetAgreed": "false",
+            "mustHave": "",
+            "dontShow": "houseShare,retirement,student" if Filter.NO_SHARE in filters else "retirement",
+            "keywords": ""
+        }
+        path = "property-to-rent" if ttype == TransactionType.RENT else "property-for-sale"
+        url = f"https://www.rightmove.co.uk/{path}/find.html?{urllib.parse.urlencode(params)}"
         data = RightmoveData(url)
         adverts = []
-        ttype = TransactionType.RENT if data.rent_or_sale == "rent" else TransactionType.BUY
         for ad in data.get_results.iterrows():
             adverts.append(Advert(
                 ttype,
@@ -39,6 +90,17 @@ class ZooplaScraper(Scraper):
         self.api_key = api_key
 
     def get_cambridge_rentals(self) -> List[Advert]:
+        return self.get_properties(Location.CAMBRIDGE, TransactionType.RENT, filters=[Filter.NO_SHARE])
+
+    def get_properties(
+            self,
+            location: Location,
+            ttype: TransactionType,
+            *,
+            furnished: bool = False,
+            filters: List[Filter] = None
+    ) -> List[Advert]:
+        filters = filters or []
         zoopla = Zoopla(self.api_key)
         page_size = 100
         page_num = 1
@@ -50,12 +112,11 @@ class ZooplaScraper(Scraper):
             "communal space", "communal study", "room available",
             "communal cleaner", "rooms available", "per person",
             "sharing", "shared", "sharer", "student accommodation"
-        ]
+        ] if Filter.NO_SHARE in filters else []
         while True:
             search = zoopla.property_listings({
-                "listing_status": "rent",
-                "area": "Cambridge, Cambridgeshire",
-                "minimum_beds": 2,
+                "listing_status": "rent" if ttype == TransactionType.RENT else "sale",
+                "area": location.zoopla,
                 "order_by": "price",
                 "ordering": "ascending",
                 "page_size": page_size,
@@ -66,12 +127,15 @@ class ZooplaScraper(Scraper):
                     continue
                 if any(block in result.description.lower() for block in description_blocklist):
                     continue
-                if result.num_bathrooms < 1:
+                if Filter.NO_SHARE in filters and result.num_bathrooms < 1:
                     continue
+                price = result.price
+                if ttype == TransactionType.RENT:
+                    price = result.price * 52 / 12  # API prices are per week
                 adverts.append(Advert(
                     TransactionType.RENT if result.listing_status == "rent" else TransactionType.BUY,
                     Website.ZOOPLA,
-                    result.price * 52 / 12,  # API prices are per week
+                    price,
                     result.num_bedrooms,
                     result.details_url,
                     result.description
