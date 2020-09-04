@@ -175,10 +175,7 @@ class ZooplaScraper(Scraper):
         }
         path = "/".join([x.strip().lower() for x in location.zoopla.split(",")][::-1])
         url = f"https://www.zoopla.co.uk/to-rent/property/{path}/?" + urllib.parse.urlencode(params)
-        resp = requests.get(
-            url,
-            headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36"}
-        )
+        resp = requests.get(url)
         soup = BeautifulSoup(resp.content, "html.parser")
         results = []
         for results_listing in soup.select("ul.listing-results"):
