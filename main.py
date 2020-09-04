@@ -1,6 +1,6 @@
 import json
 
-from scraper import RightMoveScraper, ZooplaScraper, ZooplaAPIScraper
+from house_search.scraper import RightMoveScraper, ZooplaScraper
 
 with open("config.json") as f:
     config = json.load(f)

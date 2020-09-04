@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 from rightmove_webscraper import RightmoveData
 from zoopla import Zoopla
 
-from advert import Advert, TransactionType, Website
+from house_search.advert import Advert, TransactionType, Website
 
 
 class Location(Enum):
